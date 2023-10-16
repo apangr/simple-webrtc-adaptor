@@ -2,9 +2,11 @@
   "name": "simple-webrtc-adaptor",
   "version": "1.0.1",
   "description": "WebSocket interface in publishing and playing WebRTC streams using Javascript.",
-  "main": "index.js",
+  "main": "dist/index.js", 
+  "types": "dist/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npx tsc"
   },
   "repository": {
     "type": "git",
@@ -20,5 +22,8 @@
   "bugs": {
     "url": "https://github.com/apangr/simple-webrtc-adaptor/issues"
   },
-  "homepage": "https://github.com/apangr/simple-webrtc-adaptor#readme"
+  "homepage": "https://github.com/apangr/simple-webrtc-adaptor#readme",
+  "devDependencies": {
+    "typescript": "~5.1.3"
+  }
 }
