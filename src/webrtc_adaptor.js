@@ -1,8 +1,10 @@
+/**
+ * https://github.com/ant-media/StreamApp/tree/master/src/main/webapp
+ */
 import { PeerStats } from "./peer_stats.js";
 import { WebSocketAdaptor } from "./websocket_adaptor.js";
 import { MediaManager } from "./media_manager.js";
 import { SoundMeter } from "./soundmeter.js";
-import "./external/loglevel.min.js";
 
 const logger = window.log;
 
@@ -12,6 +14,10 @@ const logger = window.log;
  *
  */
 class ReceivingMessage {
+  /**
+   *
+   * @param {number} size
+   */
   constructor(size) {
     this.size = size;
     this.received = 0;
@@ -40,16 +46,22 @@ class ReceivingMessage {
  *
  */
 export class WebRTCAdaptor {
+  /**
+   * @type {Array<Function>}
+   */
   static pluginInitMethods = new Array();
 
   /**
    * Register plugins to the WebRTCAdaptor
-   * @param {*} plugin
+   * @param {Function} plugin
    */
   static register(pluginInitMethod) {
     WebRTCAdaptor.pluginInitMethods.push(pluginInitMethod);
   }
-
+  /**
+   *
+   * @param {object} initialValues
+   */
   constructor(initialValues) {
     /**
      * PeerConnection configuration while initializing the PeerConnection.
@@ -222,6 +234,13 @@ export class WebRTCAdaptor {
      * flag to initialize components in constructor
      */
     this.initializeComponents = true;
+
+    /**
+     * Degradation Preference
+     *
+     * maintain-framerate, maintain-resolution, or balanced
+     */
+    this.degradationPreference = "maintain-resolution";
 
     /**
      * PAY ATTENTION: The values of the above fields are provided as this constructor parameter.
@@ -447,15 +466,15 @@ export class WebRTCAdaptor {
   /**
    * Called to start a new WebRTC stream. AMS responds with start message.
    * Parameters:
-   *     streamId: unique id for the stream
-   *     token: required if any stream security (token control) enabled. Check https://github.com/ant-media/Ant-Media-Server/wiki/Stream-Security-Documentation
-   *     subscriberId: required if TOTP enabled. Check https://github.com/ant-media/Ant-Media-Server/wiki/Time-based-One-Time-Password-(TOTP)
-   *     subscriberCode: required if TOTP enabled. Check https://github.com/ant-media/Ant-Media-Server/wiki/Time-based-One-Time-Password-(TOTP)
-   *   streamName: required if you want to set a name for the stream
-   *   mainTrack: required if you want to start the stream as a subtrack for a main streamwhich has id of this parameter.
+   *  @param {string} streamId : unique id for the stream
+   *  @param {string=} [token] : required if any stream security (token control) enabled. Check https://github.com/ant-media/Ant-Media-Server/wiki/Stream-Security-Documentation
+   *  @param {string=} [subscriberId] : required if TOTP enabled. Check https://github.com/ant-media/Ant-Media-Server/wiki/Time-based-One-Time-Password-(TOTP)
+   *  @param {string=} [subscriberCode] : required if TOTP enabled. Check https://github.com/ant-media/Ant-Media-Server/wiki/Time-based-One-Time-Password-(TOTP)
+   *  @param {string=} [streamName] : required if you want to set a name for the stream
+   *  @param {string=} [mainTrack] :  required if you want to start the stream as a subtrack for a main stream which has id of this parameter.
    *                Check:https://antmedia.io/antmediaserver-webrtc-multitrack-playing-feature/
    *                !!! for multitrack conference set this value with roomName
-   *   metaData: a free text information for the stream to AMS. It is provided to Rest methods by the AMS
+   *  @param {string=} [metaData] : a free text information for the stream to AMS. It is provided to Rest methods by the AMS
    */
   publish(
     streamId,
@@ -493,17 +512,13 @@ export class WebRTCAdaptor {
       this.mediaManager
         .initLocalStream()
         .then(() => {
-          var videoEnabled = false;
-          var audioEnabled = false;
+          let videoEnabled = false;
+          let audioEnabled = false;
           if (this.mediaManager.localStream != null) {
             videoEnabled =
-              this.mediaManager.localStream.getVideoTracks().length > 0
-                ? true
-                : false;
+              this.mediaManager.localStream.getVideoTracks().length > 0;
             audioEnabled =
-              this.mediaManager.localStream.getAudioTracks().length > 0
-                ? true
-                : false;
+              this.mediaManager.localStream.getAudioTracks().length > 0;
           }
           this.sendPublishCommand(
             streamId,
@@ -522,14 +537,10 @@ export class WebRTCAdaptor {
           throw error;
         });
     } else {
-      var videoEnabled =
-        this.mediaManager.localStream.getVideoTracks().length > 0
-          ? true
-          : false;
-      var audioEnabled =
-        this.mediaManager.localStream.getAudioTracks().length > 0
-          ? true
-          : false;
+      let videoEnabled =
+        this.mediaManager.localStream.getVideoTracks().length > 0;
+      let audioEnabled =
+        this.mediaManager.localStream.getAudioTracks().length > 0;
       this.sendPublishCommand(
         streamId,
         token,
@@ -555,7 +566,7 @@ export class WebRTCAdaptor {
         //if it is not connected, try to reconnect
         this.reconnectIfRequired(0);
       }
-    }, 5000);
+    }, 3000);
   }
 
   sendPublishCommand(
@@ -569,7 +580,7 @@ export class WebRTCAdaptor {
     videoEnabled,
     audioEnabled
   ) {
-    var jsCmd = {
+    let jsCmd = {
       command: "publish",
       streamId: streamId,
       token: token,
@@ -596,16 +607,16 @@ export class WebRTCAdaptor {
   /**
    * Called to join a room. AMS responds with joinedTheRoom message.
    * Parameters:
-   *     roomName: unique id of the room
-   *     stream: unique id of the stream belogns to this participant
-   *     mode:    legacy for older implementation (default value)
+   * @param {string} roomName : unique id of the room
+   * @param {string=} streamId : unique id of the stream belongs to this participant
+   * @param {string=} mode :    legacy for older implementation (default value)
    *            mcu for merging streams
    *            amcu: audio only conferences with mixed audio
    */
   joinRoom(roomName, streamId, mode) {
     this.roomName = roomName;
 
-    var jsCmd = {
+    let jsCmd = {
       command: "joinRoom",
       room: roomName,
       streamId: streamId,
@@ -617,14 +628,14 @@ export class WebRTCAdaptor {
   /**
    * Called to start a playing session for a stream. AMS responds with start message.
    * Parameters:
-   *  - streamId:(string) unique id for the stream that you want to play
-   *  - token:(string) required if any stream security (token control) enabled. Check https://github.com/ant-media/Ant-Media-Server/wiki/Stream-Security-Documentation
-   *  - roomId:(string) required if this stream is belonging to a room participant
-   *  - enableTracks:(array) required if the stream is a main stream of multitrack playing. You can pass the the subtrack id list that you want to play.
+   *  @param {string} streamId :(string) unique id for the stream that you want to play
+   *  @param {string=} token :(string) required if any stream security (token control) enabled. Check https://github.com/ant-media/Ant-Media-Server/wiki/Stream-Security-Documentation
+   *  @param {string=} roomId :(string) required if this stream is belonging to a room participant
+   *  @param {Array.<MediaStreamTrack>=} enableTracks :(array) required if the stream is a main stream of multitrack playing. You can pass the the subtrack id list that you want to play.
    *                    you can also provide a track id that you don't want to play by adding ! before the id.
-   *   - subscriberId:(string) required if TOTP enabled. Check https://github.com/ant-media/Ant-Media-Server/wiki/Time-based-One-Time-Password-(TOTP)
-   *   - subscriberCode:(string) required if TOTP enabled. Check https://github.com/ant-media/Ant-Media-Server/wiki/Time-based-One-Time-Password-(TOTP)
-   *   - metaData:(string, json) a free text information for the stream to AMS. It is provided to Rest methods by the AMS
+   *  @param {string=} subscriberId :(string) required if TOTP enabled. Check https://github.com/ant-media/Ant-Media-Server/wiki/Time-based-One-Time-Password-(TOTP)
+   *  @param {string=} subscriberCode :(string) required if TOTP enabled. Check https://github.com/ant-media/Ant-Media-Server/wiki/Time-based-One-Time-Password-(TOTP)
+   *  @param {string=} metaData :(string, json) a free text information for the stream to AMS. It is provided to Rest methods by the AMS
    */
   play(
     streamId,
@@ -643,7 +654,7 @@ export class WebRTCAdaptor {
     this.playSubscriberCode = subscriberCode;
     this.playMetaData = metaData;
 
-    var jsCmd = {
+    let jsCmd = {
       command: "play",
       streamId: streamId,
       token: typeof token !== undefined && token != null ? token : "",
@@ -680,12 +691,12 @@ export class WebRTCAdaptor {
         //if it is not connected, try to reconnect
         this.reconnectIfRequired(0);
       }
-    }, 5000);
+    }, 3000);
   }
 
   /**
    * Reconnects to the stream if it is not stopped on purpose
-   * @param {*} streamId
+   * @param {number} [delayMs]
    * @returns
    */
   reconnectIfRequired(delayMs = 3000) {
@@ -719,24 +730,32 @@ export class WebRTCAdaptor {
       this.iceConnectionState(this.publishStreamId) != "connected" &&
       this.iceConnectionState(this.publishStreamId) != "completed"
     ) {
-      this.closePeerConnection(this.publishStreamId);
-      console.log(
-        "It will try to publish again because it is not stopped on purpose"
+      // notify that reconnection process started for publish
+      this.notifyEventListeners(
+        "reconnection_attempt_for_publisher",
+        this.publishStreamId
       );
-      this.publish(
-        this.publishStreamId,
-        this.publishToken,
-        this.publishSubscriberId,
-        this.publishSubscriberCode,
-        this.publishStreamName,
-        this.publishMainTrack,
-        this.publishMetaData
-      );
+
+      this.stop(this.publishStreamId);
+      setTimeout(() => {
+        //publish about some time later because server may not drop the connection yet
+        //it may trigger already publishing error
+        logger.log("Trying publish again for stream: " + this.publishStreamId);
+        this.publish(
+          this.publishStreamId,
+          this.publishToken,
+          this.publishSubscriberId,
+          this.publishSubscriberCode,
+          this.publishStreamName,
+          this.publishMainTrack,
+          this.publishMetaData
+        );
+      }, 500);
     }
 
     //reconnect play
     for (var index in this.playStreamId) {
-      var streamId = this.playStreamId[index];
+      let streamId = this.playStreamId[index];
       if (
         this.remotePeerConnection[streamId] != "null" &&
         //check connection status to not stop streaming an active stream
@@ -744,19 +763,29 @@ export class WebRTCAdaptor {
         this.iceConnectionState(streamId) != "connected" &&
         this.iceConnectionState(streamId) != "completed"
       ) {
-        console.log(
-          "It will try to play again because it is not stopped on purpose"
+        // notify that reconnection process started for play
+        this.notifyEventListeners("reconnection_attempt_for_player", streamId);
+
+        logger.log(
+          "It will try to play again for stream: " +
+            streamId +
+            " because it is not stopped on purpose"
         );
-        this.closePeerConnection(streamId);
-        this.play(
-          streamId,
-          this.playToken,
-          this.playRoomId,
-          this.playEnableTracks,
-          this.playSubscriberId,
-          this.playSubscriberCode,
-          this.playMetaData
-        );
+        this.stop(streamId);
+        setTimeout(() => {
+          //play about some time later because server may not drop the connection yet
+          //it may trigger already playing error
+          logger.log("Trying play again for stream: " + streamId);
+          this.play(
+            streamId,
+            this.playToken,
+            this.playRoomId,
+            this.playEnableTracks,
+            this.playSubscriberId,
+            this.playSubscriberCode,
+            this.playMetaData
+          );
+        }, 500);
       }
     }
   }
@@ -764,14 +793,14 @@ export class WebRTCAdaptor {
   /**
    * Called to stop a publishing/playing session for a stream. AMS responds with publishFinished or playFinished message.
    * Parameters:
-   *     streamId: unique id for the stream that you want to stop publishing or playing
+   *  @param {string} streamId : unique id for the stream that you want to stop publishing or playing
    */
   stop(streamId) {
     //stop is called on purpose and it deletes the peer connection from remotePeerConnections
     this.closePeerConnection(streamId);
 
     if (this.webSocketAdaptor != null && this.webSocketAdaptor.isConnected()) {
-      var jsCmd = {
+      let jsCmd = {
         command: "stop",
         streamId: streamId,
       };
@@ -783,10 +812,10 @@ export class WebRTCAdaptor {
   /**
    * Called to join a peer-to-peer mode session as peer. AMS responds with joined message.
    * Parameters:
-   *     streamId: unique id for the peer-to-peer session
+   * @param {string} streamId : unique id for the peer-to-peer session
    */
   join(streamId) {
-    var jsCmd = {
+    let jsCmd = {
       command: "join",
       streamId: streamId,
       multiPeer: this.isMultiPeer && this.multiPeerStreamId == null,
@@ -826,7 +855,7 @@ export class WebRTCAdaptor {
   /**
    * Called to leave from a conference room. AMS responds with leavedTheRoom message.
    * Parameters:
-   *     roomName: unique id for the conference room
+   * @param {string} roomName : unique id for the conference room
    */
   leaveFromRoom(roomName) {
     for (var key in this.remotePeerConnection) {
@@ -845,7 +874,7 @@ export class WebRTCAdaptor {
   /**
    * Called to leave from a peer-to-peer mode session. AMS responds with leaved message.
    * Parameters:
-   *     streamId: unique id for the peer-to-peer session
+   * @param {string} streamId : unique id for the peer-to-peer session
    */
   leave(streamId) {
     var jsCmd = {
@@ -864,11 +893,37 @@ export class WebRTCAdaptor {
   /**
    * Called to get a stream information for a specific stream. AMS responds with streamInformation message.
    * Parameters:
-   *     streamId: unique id for the stream that you want to get info about
+   * @param {string} streamId : unique id for the stream that you want to get info about
    */
   getStreamInfo(streamId) {
-    var jsCmd = {
+    let jsCmd = {
       command: "getStreamInfo",
+      streamId: streamId,
+    };
+    this.webSocketAdaptor.send(JSON.stringify(jsCmd));
+  }
+
+  /**
+   * Called to get the list of video track assignments. AMS responds with the videoTrackAssignmentList message.
+   * Parameters:
+   * @param {string} streamId : unique id for the stream that you want to get info about
+   */
+  requestVideoTrackAssignments(streamId) {
+    let jsCmd = {
+      command: "getVideoTrackAssignmentsCommand",
+      streamId: streamId,
+    };
+    this.webSocketAdaptor.send(JSON.stringify(jsCmd));
+  }
+
+  /**
+   * Called to get the broadcast object for a specific stream. AMS responds with the broadcastObject callback.
+   * Parameters:
+   * @param {string} streamId : unique id for the stream that you want to get info about
+   */
+  getBroadcastObject(streamId) {
+    let jsCmd = {
+      command: "getBroadcastObject",
       streamId: streamId,
     };
     this.webSocketAdaptor.send(JSON.stringify(jsCmd));
@@ -877,10 +932,10 @@ export class WebRTCAdaptor {
   /**
    * Called to update the meta information for a specific stream.
    * Parameters:
-   *     streamId: unique id for the stream that you want to update MetaData
-   *   metaData: new free text information for the stream
+   * @param {string} streamId : unique id for the stream that you want to update MetaData
+   * @param {string}  metaData : new free text information for the stream
    */
-  upateStreamMetaData(streamId, metaData) {
+  updateStreamMetaData(streamId, metaData) {
     var jsCmd = {
       command: "updateStreamMetaData",
       streamId: streamId,
@@ -894,8 +949,8 @@ export class WebRTCAdaptor {
    * which includes the ids and names of the streams in that room.
    * If there is no active streams in the room, AMS returns error `no_active_streams_in_room` in error callback
    * Parameters:
-   *     roomName: unique id for the room that you want to get info about
-   *     streamId: unique id for the stream that is streamed by this @WebRTCAdaptor
+   * @param {string} roomName : unique id for the room that you want to get info about
+   * @param {string} streamId : unique id for the stream that is streamed by this @WebRTCAdaptor
    */
   getRoomInfo(roomName, streamId) {
     var jsCmd = {
@@ -909,9 +964,9 @@ export class WebRTCAdaptor {
   /**
    * Called to enable/disable data flow from the AMS for a specific track under a main track.
    * Parameters:
-   *     mainTrackId: unique id for the main stream
-   *     trackId: unique id for the track that you want to enable/disable data flow for
-   *     enabled: true or false
+   * @param {string}  mainTrackId : unique id for the main stream
+   * @param {string}  trackId : unique id for the track that you want to enable/disable data flow for
+   * @param {boolean} enabled : true or false
    */
   enableTrack(mainTrackId, trackId, enabled) {
     var jsCmd = {
@@ -926,8 +981,8 @@ export class WebRTCAdaptor {
   /**
    * Called to get the track ids under a main stream. AMS responds with trackList message.
    * Parameters:
-   *     streamId: unique id for the main stream
-   *     token: not used
+   * @param {string} streamId : unique id for the main stream
+   * @param {string=} [token] : not used
    * TODO: check this function
    */
   getTracks(streamId, token) {
@@ -1005,10 +1060,21 @@ export class WebRTCAdaptor {
   }
 
   /**
+   * Called internally to sanitize the text if it contains script to prevent xss
+   * @param text
+   * @returns {*}
+   */
+  sanitizeHTML(text) {
+    if (text.includes("script"))
+      return text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return text;
+  }
+
+  /**
    * Called internally to initiate Data Channel.
    * Note that Data Channel should be enabled fromAMS settings.
-   *     streamId: unique id for the stream
-   *   dataChannel: provided by PeerConnection
+   *  @param {string}  streamId : unique id for the stream
+   *  @param {*} dataChannel : provided by PeerConnection
    */
   initDataChannel(streamId, dataChannel) {
     dataChannel.onerror = (error) => {
@@ -1032,6 +1098,7 @@ export class WebRTCAdaptor {
       var data = obj.data;
 
       if (typeof data === "string" || data instanceof String) {
+        obj.data = this.sanitizeHTML(obj.data);
         this.notifyEventListeners("data_received", obj);
       } else {
         var length = data.length || data.size || data.byteLength;
@@ -1078,15 +1145,15 @@ export class WebRTCAdaptor {
 
   /**
    * Called internally to initiate PeerConnection.
-   *     streamId: unique id for the stream
-   *   dataChannelMode: can be "publish" , "play" or "peer" based on this it is decided which way data channel is created
+   * @param {string} streamId : unique id for the stream
+   * @param {string}  dataChannelMode : can be "publish" , "play" or "peer" based on this it is decided which way data channel is created
    */
   initPeerConnection(streamId, dataChannelMode) {
     //null == undefined -> it's true
     //null === undefined -> it's false
 
     if (this.remotePeerConnection[streamId] == null) {
-      var closedStreamId = streamId;
+      let closedStreamId = streamId;
       logger.debug(
         "stream id in init peer connection: " +
           streamId +
@@ -1100,15 +1167,32 @@ export class WebRTCAdaptor {
       this.iceCandidateList[streamId] = new Array();
       if (!this.playStreamId.includes(streamId)) {
         if (this.mediaManager.localStream != null) {
-          //AddStream is deprecated thus updated to the addTrack after version 2.4.2.1
-          this.mediaManager.localStream
-            .getTracks()
-            .forEach((track) =>
-              this.remotePeerConnection[streamId].addTrack(
-                track,
-                this.mediaManager.localStream
-              )
+          this.mediaManager.localStream.getTracks().forEach((track) => {
+            let rtpSender = this.remotePeerConnection[streamId].addTrack(
+              track,
+              this.mediaManager.localStream
             );
+            if (track.kind == "video") {
+              let parameters = rtpSender.getParameters();
+              parameters.degradationPreference = this.degradationPreference;
+              rtpSender
+                .setParameters(parameters)
+                .then(() => {
+                  logger.info(
+                    "Degradation Preference is set to " +
+                      this.degradationPreference
+                  );
+                })
+                .catch((err) => {
+                  logger.warn(
+                    "Degradation Preference cannot be set to " +
+                      this.degradationPreference
+                  );
+                });
+            }
+            //
+            //parameters.degradationPreference
+          });
         }
       }
       this.remotePeerConnection[streamId].onicecandidate = (event) => {
@@ -1197,11 +1281,13 @@ export class WebRTCAdaptor {
         }
       };
     }
+
+    return this.remotePeerConnection[streamId];
   }
 
   /**
    * Called internally to close PeerConnection.
-   *     streamId: unique id for the stream
+   * @param {string} streamId : unique id for the stream
    */
   closePeerConnection(streamId) {
     var peerConnection = this.remotePeerConnection[streamId];
@@ -1233,7 +1319,7 @@ export class WebRTCAdaptor {
    * Called to get the signalling state for a stream.
    * This information can be used for error handling.
    * Check: https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/connectionState
-   *     streamId: unique id for the stream
+   * @param {string} streamId : unique id for the stream
    */
   signallingState(streamId) {
     if (this.remotePeerConnection[streamId] != null) {
@@ -1246,7 +1332,7 @@ export class WebRTCAdaptor {
    * Called to get the ice connection state for a stream.
    * This information can be used for error handling.
    * Check: https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/iceConnectionState
-   *     streamId: unique id for the stream
+   * @param {string} streamId : unique id for the stream
    */
   iceConnectionState(streamId) {
     if (this.remotePeerConnection[streamId] != null) {
@@ -1258,8 +1344,8 @@ export class WebRTCAdaptor {
   /**
    * Called by browser when Local Configuration (SDP) is created successfully.
    * It is set as LocalDescription first then sent to AMS.
-   *     configuration: created Local Configuration (SDP)
-   *     streamId: unique id for the stream
+   * @param {object} configuration : created Local Configuration (SDP)
+   * @param {string} streamId : unique id for the stream
    */
   gotDescription(configuration, streamId) {
     this.remotePeerConnection[streamId]
@@ -1276,10 +1362,7 @@ export class WebRTCAdaptor {
           sdp: configuration.sdp,
         };
 
-        if (this.debug) {
-          logger.debug("local sdp: ");
-          logger.debug(configuration.sdp);
-        }
+        logger.debug("setLocalDescription:" + configuration.sdp);
 
         this.webSocketAdaptor.send(JSON.stringify(jsCmd));
       })
@@ -1292,10 +1375,10 @@ export class WebRTCAdaptor {
    * Called by WebSocketAdaptor when Remote Configuration (SDP) is received from AMS.
    * It is set as RemoteDescription first then if @iceCandidateList has candidate that
    * is received bfore this message, it is added as ice candidate.
-   *     configuration: received Remote Configuration (SDP)
-   *     idOfStream: unique id for the stream
-   *     typeOfConfiguration: unique id for the stream
-   *     idMapping: stream id and track id (which is provided in SDP) mapping in MultiTrack Playback and conference.
+   * @param {object} configuration : received Remote Configuration (SDP)
+   * @param {string} idOfStream : unique id for the stream
+   * @param {string} typeOfConfiguration
+   * @param {string} idMapping : stream id and track id (which is provided in SDP) mapping in MultiTrack Playback and conference.
    *                It is recorded to match stream id as new tracks are added with @onTrack
    */
   takeConfiguration(idOfStream, configuration, typeOfConfiguration, idMapping) {
@@ -1312,6 +1395,8 @@ export class WebRTCAdaptor {
     this.idMapping[streamId] = idMapping;
 
     this.initPeerConnection(streamId, dataChannelMode);
+
+    logger.debug("setRemoteDescription:" + conf);
 
     this.remotePeerConnection[streamId]
       .setRemoteDescription(
@@ -1382,9 +1467,9 @@ export class WebRTCAdaptor {
    * Called by WebSocketAdaptor when new ice candidate is received from AMS.
    * If Remote Description (SDP) is already set, the candidate is added immediately,
    * otherwise stored in @iceCandidateList to add after Remote Description (SDP) set.
-   *     idOfTheStream: unique id for the stream
-   *     tmpLabel: sdpMLineIndex
-   *     tmpCandidate: ice candidate
+   * @param {string} idOfTheStream : unique id for the stream
+   * @param {number|null} tmpLabel : sdpMLineIndex
+   * @param {string} tmpCandidate : ice candidate
    */
   takeCandidate(idOfTheStream, tmpLabel, tmpCandidate) {
     var streamId = idOfTheStream;
@@ -1399,6 +1484,8 @@ export class WebRTCAdaptor {
     var dataChannelMode = "peer";
     this.initPeerConnection(streamId, dataChannelMode);
 
+    logger.debug("takeCandidate:" + candidateSdp);
+
     if (this.remoteDescriptionSet[streamId] == true) {
       this.addIceCandidate(streamId, candidate);
     } else {
@@ -1411,8 +1498,8 @@ export class WebRTCAdaptor {
 
   /**
    * Called internally to add the Ice Candidate to PeerConnection
-   *     streamId: unique id for the stream
-   *     tmpCandidate: ice candidate
+   *  @param {string} streamId : unique id for the stream
+   *  @param {object} candidate : ice candidate
    */
   addIceCandidate(streamId, candidate) {
     var protocolSupported = false;
@@ -1466,14 +1553,15 @@ export class WebRTCAdaptor {
 
   /**
    * Called by WebSocketAdaptor when start message is received //TODO: may be changed. this logic shouldn't be in WebSocketAdaptor
-   *     idOfStream: unique id for the stream
+   * @param {string} idOfStream : unique id for the stream
    */
   startPublishing(idOfStream) {
-    var streamId = idOfStream;
+    let streamId = idOfStream;
 
-    this.initPeerConnection(streamId, "publish");
+    let peerConnection = this.initPeerConnection(streamId, "publish");
 
-    this.remotePeerConnection[streamId]
+    //this.remotePeerConnection[streamId]
+    peerConnection
       .createOffer(this.sdp_constraints)
       .then((configuration) => {
         this.gotDescription(configuration, streamId);
@@ -1488,13 +1576,13 @@ export class WebRTCAdaptor {
   /**
    * Toggle video track on the server side.
    *
-   *   streamId: is the id of the stream
-   *   trackId: is the id of the track. streamId is also one of the trackId of the stream. If you are having just a single track on your
+   * @param {string}  streamId : is the id of the stream
+   * @param {string}  trackId : is the id of the track. streamId is also one of the trackId of the stream. If you are having just a single track on your
    *         stream, you need to give streamId as trackId parameter as well.
-   *   enabled: is the enable/disable video track. If it's true, server sends video track. If it's false, server does not send video
+   * @param {boolean}  enabled : is the enable/disable video track. If it's true, server sends video track. If it's false, server does not send video
    */
   toggleVideo(streamId, trackId, enabled) {
-    var jsCmd = {
+    let jsCmd = {
       command: "toggleVideo",
       streamId: streamId,
       trackId: trackId,
@@ -1506,10 +1594,10 @@ export class WebRTCAdaptor {
   /**
    * Toggle audio track on the server side.
    *
-   *   streamId: is the id of the stream
-   *   trackId: is the id of the track. streamId is also one of the trackId of the stream. If you are having just a single track on your
+   * @param {string} streamId : is the id of the stream
+   * @param {string}  trackId : is the id of the track. streamId is also one of the trackId of the stream. If you are having just a single track on your
    *            stream, you need to give streamId as trackId parameter as well.
-   *   enabled: is the enable/disable video track. If it's true, server sends audio track. If it's false, server does not send audio
+   * @param {boolean}  enabled : is the enable/disable video track. If it's true, server sends audio track. If it's false, server does not send audio
    *
    */
   toggleAudio(streamId, trackId, enabled) {
@@ -1525,218 +1613,264 @@ export class WebRTCAdaptor {
   /**
    * Called to get statistics for a PeerConnection. It can be publisher or player.
    *
-   *     streamId: unique id for the stream
+   * @param {string} streamId : unique id for the stream
    */
   getStats(streamId) {
     logger.debug(
       "peerstatsgetstats = " + this.remotePeerConnectionStats[streamId]
     );
+    return new Promise((resolve, reject) => {
+      this.remotePeerConnection[streamId]
+        .getStats(null)
+        .then((stats) => {
+          var bytesReceived = -1;
+          var videoPacketsLost = -1;
+          var audioPacketsLost = -1;
+          var fractionLost = -1;
+          var currentTime = -1;
+          var bytesSent = -1;
+          var videoPacketsSent = -1;
+          var audioPacketsSent = -1;
+          var audioLevel = -1;
+          var qlr = "";
+          var framesEncoded = -1;
+          var width = -1;
+          var height = -1;
+          var fps = -1;
+          var frameWidth = -1;
+          var frameHeight = -1;
+          var videoRoundTripTime = -1;
+          var videoJitter = -1;
 
-    this.remotePeerConnection[streamId].getStats(null).then((stats) => {
-      var bytesReceived = -1;
-      var videoPacketsLost = -1;
-      var audioPacketsLost = -1;
-      var fractionLost = -1;
-      var currentTime = -1;
-      var bytesSent = -1;
-      var videoPacketsSent = -1;
-      var audioPacketsSent = -1;
-      var audioLevel = -1;
-      var qlr = "";
-      var framesEncoded = -1;
-      var width = -1;
-      var height = -1;
-      var fps = -1;
-      var frameWidth = -1;
-      var frameHeight = -1;
-      var videoRoundTripTime = -1;
-      var videoJitter = -1;
+          var audioRoundTripTime = -1;
+          var audioJitter = -1;
 
-      var audioRoundTripTime = -1;
-      var audioJitter = -1;
+          var framesDecoded = -1;
+          var framesDropped = -1;
+          var framesReceived = -1;
 
-      var framesDecoded = -1;
-      var framesDropped = -1;
-      var framesReceived = -1;
+          var audioJitterAverageDelay = -1;
+          var videoJitterAverageDelay = -1;
+          var availableOutgoingBitrate = Infinity;
 
-      var audioJitterAverageDelay = -1;
-      var videoJitterAverageDelay = -1;
+          stats.forEach((value) => {
+            //logger.debug(value);
+            if (
+              value.type == "inbound-rtp" &&
+              typeof value.kind != "undefined"
+            ) {
+              bytesReceived += value.bytesReceived;
+              if (value.kind == "audio") {
+                audioPacketsLost = value.packetsLost;
+              } else if (value.kind == "video") {
+                videoPacketsLost = value.packetsLost;
+              }
 
-      stats.forEach((value) => {
-        //logger.debug(value);
+              fractionLost += value.fractionLost;
+              currentTime = value.timestamp;
 
-        if (value.type == "inbound-rtp" && typeof value.kind != "undefined") {
-          bytesReceived += value.bytesReceived;
-          if (value.kind == "audio") {
-            audioPacketsLost = value.packetsLost;
-          } else if (value.kind == "video") {
-            videoPacketsLost = value.packetsLost;
-          }
+              if (typeof value.frameWidth != "undefined") {
+                frameWidth = value.frameWidth;
+              }
+              if (typeof value.frameHeight != "undefined") {
+                frameHeight = value.frameHeight;
+              }
 
-          fractionLost += value.fractionLost;
-          currentTime = value.timestamp;
-        } else if (value.type == "outbound-rtp") {
-          //TODO: SPLIT AUDIO AND VIDEO BITRATES
-          if (value.kind == "audio") {
-            audioPacketsSent = value.packetsSent;
-          } else if (value.kind == "video") {
-            videoPacketsSent = value.packetsSent;
-          }
-          bytesSent += value.bytesSent;
-          currentTime = value.timestamp;
-          qlr = value.qualityLimitationReason;
-          if (value.framesEncoded != null) {
-            //audio tracks are undefined here
-            framesEncoded += value.framesEncoded;
-          }
-        } else if (
-          value.type == "track" &&
-          typeof value.kind != "undefined" &&
-          value.kind == "audio"
-        ) {
-          if (typeof value.audioLevel != "undefined") {
-            audioLevel = value.audioLevel;
-          }
+              if (typeof value.framesDecoded != "undefined") {
+                framesDecoded = value.framesDecoded;
+              }
 
-          if (
-            typeof value.jitterBufferDelay != "undefined" &&
-            typeof value.jitterBufferEmittedCount != "undefined"
-          ) {
-            audioJitterAverageDelay =
-              value.jitterBufferDelay / value.jitterBufferEmittedCount;
-          }
-        } else if (
-          value.type == "track" &&
-          typeof value.kind != "undefined" &&
-          value.kind == "video"
-        ) {
-          if (typeof value.frameWidth != "undefined") {
-            frameWidth = value.frameWidth;
-          }
-          if (typeof value.frameHeight != "undefined") {
-            frameHeight = value.frameHeight;
-          }
+              if (typeof value.framesDropped != "undefined") {
+                framesDropped = value.framesDropped;
+              }
 
-          if (typeof value.framesDecoded != "undefined") {
-            framesDecoded = value.framesDecoded;
-          }
+              if (typeof value.framesReceived != "undefined") {
+                framesReceived = value.framesReceived;
+              }
+            } else if (value.type == "outbound-rtp") {
+              //TODO: SPLIT AUDIO AND VIDEO BITRATES
+              if (value.kind == "audio") {
+                audioPacketsSent = value.packetsSent;
+              } else if (value.kind == "video") {
+                videoPacketsSent = value.packetsSent;
+                frameWidth = value.frameWidth;
+                frameHeight = value.frameHeight;
+              }
+              bytesSent += value.bytesSent;
+              currentTime = value.timestamp;
+              qlr = value.qualityLimitationReason;
+              if (value.framesEncoded != null) {
+                //audio tracks are undefined here
+                framesEncoded += value.framesEncoded;
+              }
+            } else if (
+              value.type == "track" &&
+              typeof value.kind != "undefined" &&
+              value.kind == "audio"
+            ) {
+              if (typeof value.audioLevel != "undefined") {
+                audioLevel = value.audioLevel;
+              }
 
-          if (typeof value.framesDropped != "undefined") {
-            framesDropped = value.framesDropped;
-          }
+              if (
+                typeof value.jitterBufferDelay != "undefined" &&
+                typeof value.jitterBufferEmittedCount != "undefined"
+              ) {
+                audioJitterAverageDelay =
+                  value.jitterBufferDelay / value.jitterBufferEmittedCount;
+              }
+            } else if (
+              value.type == "track" &&
+              typeof value.kind != "undefined" &&
+              value.kind == "video"
+            ) {
+              if (typeof value.frameWidth != "undefined") {
+                frameWidth = value.frameWidth;
+              }
+              if (typeof value.frameHeight != "undefined") {
+                frameHeight = value.frameHeight;
+              }
 
-          if (typeof value.framesReceived != "undefined") {
-            framesReceived = value.framesReceived;
-          }
+              if (typeof value.framesDecoded != "undefined") {
+                framesDecoded = value.framesDecoded;
+              }
 
-          if (
-            typeof value.jitterBufferDelay != "undefined" &&
-            typeof value.jitterBufferEmittedCount != "undefined"
-          ) {
-            videoJitterAverageDelay =
-              value.jitterBufferDelay / value.jitterBufferEmittedCount;
-          }
-        } else if (
-          value.type == "remote-inbound-rtp" &&
-          typeof value.kind != "undefined"
-        ) {
-          if (typeof value.packetsLost != "undefined") {
-            if (value.kind == "video") {
-              //this is the packetsLost for publishing
-              videoPacketsLost = value.packetsLost;
-            } else if (value.kind == "audio") {
-              //this is the packetsLost for publishing
-              audioPacketsLost = value.packetsLost;
+              if (typeof value.framesDropped != "undefined") {
+                framesDropped = value.framesDropped;
+              }
+
+              if (typeof value.framesReceived != "undefined") {
+                framesReceived = value.framesReceived;
+              }
+
+              if (
+                typeof value.jitterBufferDelay != "undefined" &&
+                typeof value.jitterBufferEmittedCount != "undefined"
+              ) {
+                videoJitterAverageDelay =
+                  value.jitterBufferDelay / value.jitterBufferEmittedCount;
+              }
+            } else if (
+              value.type == "remote-inbound-rtp" &&
+              typeof value.kind != "undefined"
+            ) {
+              //this is coming when webrtc publishing
+
+              if (typeof value.packetsLost != "undefined") {
+                if (value.kind == "video") {
+                  //this is the packetsLost for publishing
+                  videoPacketsLost = value.packetsLost;
+                } else if (value.kind == "audio") {
+                  //this is the packetsLost for publishing
+                  audioPacketsLost = value.packetsLost;
+                }
+              }
+
+              if (typeof value.roundTripTime != "undefined") {
+                if (value.kind == "video") {
+                  videoRoundTripTime = value.roundTripTime;
+                } else if (value.kind == "audio") {
+                  audioRoundTripTime = value.roundTripTime;
+                }
+              }
+
+              if (typeof value.jitter != "undefined") {
+                if (value.kind == "video") {
+                  videoJitter = value.jitter;
+                } else if (value.kind == "audio") {
+                  audioJitter = value.jitter;
+                }
+              }
+            } else if (value.type == "media-source") {
+              if (value.kind == "video") {
+                //returns video source dimensions, not necessarily dimensions being encoded by browser
+                width = value.width;
+                height = value.height;
+                fps = value.framesPerSecond;
+              }
+            } else if (
+              value.type == "candidate-pair" &&
+              value.state == "succeeded" &&
+              value.availableOutgoingBitrate != undefined
+            ) {
+              availableOutgoingBitrate = value.availableOutgoingBitrate / 1000;
             }
-          }
+          });
 
-          if (typeof value.roundTripTime != "undefined") {
-            if (value.kind == "video") {
-              videoRoundTripTime = value.roundTripTime;
-            } else if (value.kind == "audio") {
-              audioRoundTripTime = value.roundTripTime;
-            }
-          }
+          this.remotePeerConnectionStats[streamId].totalBytesReceived =
+            bytesReceived;
+          this.remotePeerConnectionStats[streamId].videoPacketsLost =
+            videoPacketsLost;
+          this.remotePeerConnectionStats[streamId].audioPacketsLost =
+            audioPacketsLost;
+          this.remotePeerConnectionStats[streamId].fractionLost = fractionLost;
+          this.remotePeerConnectionStats[streamId].currentTime = currentTime;
+          this.remotePeerConnectionStats[streamId].totalBytesSent = bytesSent;
+          this.remotePeerConnectionStats[streamId].totalVideoPacketsSent =
+            videoPacketsSent;
+          this.remotePeerConnectionStats[streamId].totalAudioPacketsSent =
+            audioPacketsSent;
+          this.remotePeerConnectionStats[streamId].audioLevel = audioLevel;
+          this.remotePeerConnectionStats[streamId].qualityLimitationReason =
+            qlr;
+          this.remotePeerConnectionStats[streamId].totalFramesEncoded =
+            framesEncoded;
+          this.remotePeerConnectionStats[streamId].resWidth = width;
+          this.remotePeerConnectionStats[streamId].resHeight = height;
+          this.remotePeerConnectionStats[streamId].srcFps = fps;
+          this.remotePeerConnectionStats[streamId].frameWidth = frameWidth;
+          this.remotePeerConnectionStats[streamId].frameHeight = frameHeight;
+          this.remotePeerConnectionStats[streamId].videoRoundTripTime =
+            videoRoundTripTime;
+          this.remotePeerConnectionStats[streamId].videoJitter = videoJitter;
+          this.remotePeerConnectionStats[streamId].audioRoundTripTime =
+            audioRoundTripTime;
+          this.remotePeerConnectionStats[streamId].audioJitter = audioJitter;
+          this.remotePeerConnectionStats[streamId].framesDecoded =
+            framesDecoded;
+          this.remotePeerConnectionStats[streamId].framesDropped =
+            framesDropped;
+          this.remotePeerConnectionStats[streamId].framesReceived =
+            framesReceived;
 
-          if (typeof value.jitter != "undefined") {
-            if (value.kind == "video") {
-              videoJitter = value.jitter;
-            } else if (value.kind == "audio") {
-              audioJitter = value.jitter;
-            }
-          }
-        } else if (value.type == "media-source") {
-          if (value.kind == "video") {
-            //returns video source dimensions, not necessarily dimensions being encoded by browser
-            width = value.width;
-            height = value.height;
-            fps = value.framesPerSecond;
-          }
-        }
-      });
+          this.remotePeerConnectionStats[streamId].videoJitterAverageDelay =
+            videoJitterAverageDelay;
+          this.remotePeerConnectionStats[streamId].audioJitterAverageDelay =
+            audioJitterAverageDelay;
+          this.remotePeerConnectionStats[streamId].availableOutgoingBitrate =
+            availableOutgoingBitrate;
 
-      this.remotePeerConnectionStats[streamId].totalBytesReceived =
-        bytesReceived;
-      this.remotePeerConnectionStats[streamId].videoPacketsLost =
-        videoPacketsLost;
-      this.remotePeerConnectionStats[streamId].audioPacketsLost =
-        audioPacketsLost;
-      this.remotePeerConnectionStats[streamId].fractionLost = fractionLost;
-      this.remotePeerConnectionStats[streamId].currentTime = currentTime;
-      this.remotePeerConnectionStats[streamId].totalBytesSent = bytesSent;
-      this.remotePeerConnectionStats[streamId].totalVideoPacketsSent =
-        videoPacketsSent;
-      this.remotePeerConnectionStats[streamId].totalAudioPacketsSent =
-        audioPacketsSent;
-      this.remotePeerConnectionStats[streamId].audioLevel = audioLevel;
-      this.remotePeerConnectionStats[streamId].qualityLimitationReason = qlr;
-      this.remotePeerConnectionStats[streamId].totalFramesEncoded =
-        framesEncoded;
-      this.remotePeerConnectionStats[streamId].resWidth = width;
-      this.remotePeerConnectionStats[streamId].resHeight = height;
-      this.remotePeerConnectionStats[streamId].srcFps = fps;
-      this.remotePeerConnectionStats[streamId].frameWidth = frameWidth;
-      this.remotePeerConnectionStats[streamId].frameHeight = frameHeight;
-      this.remotePeerConnectionStats[streamId].videoRoundTripTime =
-        videoRoundTripTime;
-      this.remotePeerConnectionStats[streamId].videoJitter = videoJitter;
-      this.remotePeerConnectionStats[streamId].audioRoundTripTime =
-        audioRoundTripTime;
-      this.remotePeerConnectionStats[streamId].audioJitter = audioJitter;
-      this.remotePeerConnectionStats[streamId].framesDecoded = framesDecoded;
-      this.remotePeerConnectionStats[streamId].framesDropped = framesDropped;
-      this.remotePeerConnectionStats[streamId].framesReceived = framesReceived;
-
-      this.remotePeerConnectionStats[streamId].videoJitterAverageDelay =
-        videoJitterAverageDelay;
-      this.remotePeerConnectionStats[streamId].audioJitterAverageDelay =
-        audioJitterAverageDelay;
-
-      this.notifyEventListeners(
-        "updated_stats",
-        this.remotePeerConnectionStats[streamId]
-      );
+          this.notifyEventListeners(
+            "updated_stats",
+            this.remotePeerConnectionStats[streamId]
+          );
+          resolve(true);
+        })
+        .catch((err) => {
+          resolve(false);
+        });
     });
   }
 
   /**
    * Called to start a periodic timer to get statistics periodically (5 seconds) for a specific stream.
    *
-   *     streamId: unique id for the stream
+   * @param {string} streamId : unique id for the stream
+   * @param {number} periodMs : period in milliseconds. Default value is 5000 ms.
    */
-  enableStats(streamId) {
+  enableStats(streamId, periodMs = 5000) {
     if (this.remotePeerConnectionStats[streamId] == null) {
       this.remotePeerConnectionStats[streamId] = new PeerStats(streamId);
       this.remotePeerConnectionStats[streamId].timerId = setInterval(() => {
         this.getStats(streamId);
-      }, 5000);
+      }, periodMs);
     }
   }
 
   /**
    * Called to stop the periodic timer which is set by @enableStats
    *
-   *     streamId: unique id for the stream
+   * @param {string} streamId : unique id for the stream
    */
   disableStats(streamId) {
     if (
@@ -1744,6 +1878,7 @@ export class WebRTCAdaptor {
       typeof this.remotePeerConnectionStats[streamId] != "undefined"
     ) {
       clearInterval(this.remotePeerConnectionStats[streamId].timerId);
+      delete this.remotePeerConnectionStats[streamId];
     }
   }
 
@@ -1789,7 +1924,9 @@ export class WebRTCAdaptor {
   }
 
   /**
-   * Called to send a text message to other peer in the peer-to-peer sessionnnection is closed.
+   * @param {string} streamId Called to send a text message to other peer in the peer-to-peer sessionnnection is closed.
+   * @param {*} definition
+   * @param {*} data
    */
   peerMessage(streamId, definition, data) {
     var jsCmd = {
@@ -1805,8 +1942,8 @@ export class WebRTCAdaptor {
   /**
    * Called to force AMS to send the video with the specified resolution in case of Adaptive Streaming (ABR) enabled.
    * Normally the resolution is automatically determined by AMS according to the network condition.
-   *     streamId: unique id for the stream
-   *   resolution: default is auto. You can specify any height value from the ABR list.
+   * @param {string}  streamId : unique id for the stream
+   * @param {*}  resolution : default is auto. You can specify any height value from the ABR list.
    */
   forceStreamQuality(streamId, resolution) {
     var jsCmd = {
@@ -1819,15 +1956,22 @@ export class WebRTCAdaptor {
 
   /**
    * Called to send data via DataChannel. DataChannel should be enabled on AMS settings.
-   *     streamId: unique id for the stream
-   *   data: data that you want to send. It may be a text (may in Json format or not) or binary
+   * @param {string} streamId : unique id for the stream
+   * @param {*}  data : data that you want to send. It may be a text (may in Json format or not) or binary
    */
   sendData(streamId, data) {
     var CHUNK_SIZE = 16000;
     if (this.remotePeerConnection[streamId] !== undefined) {
       var dataChannel = this.remotePeerConnection[streamId].dataChannel;
-      if (dataChannel.readyState !== "open") {
-        console.warn(
+      if (
+        dataChannel === undefined ||
+        dataChannel === null ||
+        typeof dataChannel === "undefined"
+      ) {
+        logger.warn("dataChannel is null or undefined");
+        return;
+      } else if (dataChannel.readyState !== "open") {
+        logger.warn(
           "dataChannel.readyState is not open: " + dataChannel.readyState
         );
         return;
@@ -1876,8 +2020,8 @@ export class WebRTCAdaptor {
    *
    * This list can be used to add a sign to talking participant
    * in conference room. And also to determine the dominant audio to focus that player.
-   * @param {*} stream
-   * @param {*} streamId
+   * @param {MediaStream} stream
+   * @param {string} streamId
    */
   enableAudioLevel(stream, streamId) {
     const soundMeter = new SoundMeter(this.mediaManager.audioContext);
@@ -1923,8 +2067,8 @@ export class WebRTCAdaptor {
   /**
    * Called media manaher to get video/audio sender for the local peer connection
    *
-   * @param {*} streamId :
-   * @param {*} type : "video" or "audio"
+   * @param {string} streamId :
+   * @param {string} type : "video" or "audio"
    * @returns
    */
   getSender(streamId, type) {
@@ -1942,9 +2086,9 @@ export class WebRTCAdaptor {
   /**
    * Called by user
    *
-   * @param {*} videoTrackId : track id associated with pinned video
-   * @param {*} streamId : streamId of the pinned video
-   * @param {*} enabled : true | false
+   * @param {string} videoTrackId : track id associated with pinned video
+   * @param {string} streamId : streamId of the pinned video
+   * @param {boolean} enabled : true | false
    * @returns
    */
   assignVideoTrack(videoTrackId, streamId, enabled) {
@@ -1963,9 +2107,9 @@ export class WebRTCAdaptor {
    * video tracks may be less than the participants count
    * so these parameters are used for assigning video tracks to participants.
    * This message is used to make pagination in conference.
-   *
-   * @param {*} offset : start index for participant list to play
-   * @param {*} size : number of the participants to play
+   * @param {string} streamId
+   * @param {number} offset : start index for participant list to play
+   * @param {number} size : number of the participants to play
    * @returns
    */
   updateVideoTrackAssignments(streamId, offset, size) {
@@ -1982,8 +2126,8 @@ export class WebRTCAdaptor {
   /**
    * Called by user
    * This message is used to set max video track count in a conference.
-   *
-   * @param {*} maxTrackCount : maximum video track count
+   * @param {string} streamId
+   * @param {number} maxTrackCount : maximum video track count
    * @returns
    */
   setMaxVideoTrackCount(streamId, maxTrackCount) {
@@ -1997,12 +2141,18 @@ export class WebRTCAdaptor {
   }
 
   /**
-   * Called by user
-   * This message is used to send audio level in a conference.
-   *
-   * @param {*} value : audio lavel
-   * @returns
-   */
+     * Called by user
+     * This message is used to send audio level in a conference.
+     *
+	 * IMPORTANT: AMS v2.7+ can get the audio level from the RTP header and sends audio level to the viewers the same way here.
+     *  Just one difference, AMS sends the audio level in the range of 0 and 127. 0 is max, 127 is ms
+
+     *  It means that likely you don't need to send UPDATE_AUDIO_LEVEL anymore
+     *
+     * @param {string} streamId
+     * @param {*} value : audio level
+     * @returns
+     */
   updateAudioLevel(streamId, value) {
     var jsCmd = {
       streamId: streamId,
@@ -2016,7 +2166,7 @@ export class WebRTCAdaptor {
   /**
    * Called by user
    * This message is used to get debug data from server for debugging purposes in conference.
-   *
+   * @param {string} streamId
    * @returns
    */
   getDebugInfo(streamId) {
@@ -2029,13 +2179,148 @@ export class WebRTCAdaptor {
   }
 
   /**
-   * The following messages are forwarded to MediaManager. They are also kept here because of backward compatibility.
-   * You can find the details about them in media_manager.js
+   * Register user push notification token to Ant Media Server according to subscriberId and authToken
+   * @param {string} subscriberId: subscriber id it can be anything that defines the user
+   * @param {string} authToken: JWT token with the issuer field is the subscriberId and secret is the application's subscriberAuthenticationKey,
+   * 							  It's used to authenticate the user - token should be obtained from Ant Media Server Push Notification REST Service
+   * 							  or can be generated with JWT by using the secret and issuer fields
+   *
+   * @param {string} pushNotificationToken: Push Notification Token that is obtained from the Firebase or APN
+   * @param {string} tokenType: It can be "fcm" or "apn" for Firebase Cloud Messaging or Apple Push Notification
+   *
+   * @returns Server responds this message with a result.
+   * Result message is something like
+   * {
+   * 	  "command":"notification",
+   *    "success":true or false
+   *    "definition":"If success is false, it gives the error message",
+   * 	  "information":"If succeess is false, it gives more information to debug if available"
+   *
+   * }
+   *
    */
-  turnOffLocalCamera(streamId) {
-    this.mediaManager.turnOffLocalCamera(streamId);
+  registerPushNotificationToken(
+    subscriberId,
+    authToken,
+    pushNotificationToken,
+    tokenType
+  ) {
+    let jsCmd = {
+      command: "registerPushNotificationToken",
+      subscriberId: subscriberId,
+      token: authToken,
+      pnsRegistrationToken: pushNotificationToken,
+      pnsType: tokenType,
+    };
+    this.webSocketAdaptor.send(JSON.stringify(jsCmd));
   }
 
+  /**
+   * Send push notification to subscribers
+   * @param {string} subscriberId: subscriber id it can be anything(email, username, id) that defines the user in your applicaiton
+   * @param {string} authToken: JWT token with the issuer field is the subscriberId and secret is the application's subscriberAuthenticationKey,
+   *                               It's used to authenticate the user - token should be obtained from Ant Media Server Push Notification REST Service
+   *                              or can be generated with JWT by using the secret and issuer fields
+   * @param {string} pushNotificationContent: JSON Format - Push Notification Content. If it's not JSON, it will not parsed
+   * @param {Array} subscriberIdsToNotify: Array of subscriber ids to notify
+   *
+   * @returns Server responds this message with a result.
+   * Result message is something like
+   * {
+   * 	  "command":"notification",
+   *    "success":true or false
+   *    "definition":"If success is false, it gives the error message",
+   * 	  "information":"If succeess is false, it gives more information to debug if available"
+   *
+   * }
+   */
+  sendPushNotification(
+    subscriberId,
+    authToken,
+    pushNotificationContent,
+    subscriberIdsToNotify
+  ) {
+    //type check for pushNotificationContent if json
+    if (typeof pushNotificationContent !== "object") {
+      logger.error("Push Notification Content is not JSON format");
+      throw new Error("Push Notification Content is not JSON format");
+    }
+
+    //type check if subscriberIdsToNotify is array
+    if (!Array.isArray(subscriberIdsToNotify)) {
+      logger.error(
+        "subscriberIdsToNotify is not an array. Please put the subscriber ids to notify in an array such as [user1], [user1, user2]"
+      );
+      throw new Error(
+        "subscriberIdsToNotify is not an array. Please put the subscriber ids to notify in an array such as [user1], [user1, user2]"
+      );
+    }
+
+    let jsCmd = {
+      command: "sendPushNotification",
+      subscriberId: subscriberId,
+      token: authToken,
+      pushNotificationContent: pushNotificationContent,
+      subscriberIdsToNotify: subscriberIdsToNotify,
+    };
+    this.webSocketAdaptor.send(JSON.stringify(jsCmd));
+  }
+
+  /**
+   * Send push notification to topic
+   * @param {string} subscriberId: subscriber id it can be anything(email, username, id) that defines the user in your applicaiton
+   * @param {string} authToken: JWT token with the issuer field is the subscriberId and secret is the application's subscriberAuthenticationKey,
+   *                              It's used to authenticate the user - token should be obtained from Ant Media Server Push Notification REST Service
+   *                             or can be generated with JWT by using the secret and issuer fields
+   * @param {string} pushNotificationContent:JSON Format - Push Notification Content. If it's not JSON, it will not parsed
+   * @param {string} topic: Topic to send push notification
+   *
+   * @returns Server responds this message with a result.
+   * Result message is something like
+   * {
+   *     "command":"notification",
+   *     "success":true or false
+   *     "definition":"If success is false, it gives the error message",
+   *     "information":"If succeess is false, it gives more information to debug if available"
+   * }
+   *
+   */
+  sendPushNotificationToTopic(
+    subscriberId,
+    authToken,
+    pushNotificationContent,
+    topic
+  ) {
+    //type check for pushNotificationContent if json
+    if (typeof pushNotificationContent !== "object") {
+      logger.error("Push Notification Content is not JSON format");
+      throw new Error("Push Notification Content is not JSON format");
+    }
+
+    let jsCmd = {
+      command: "sendPushNotification",
+      subscriberId: subscriberId,
+      token: authToken,
+      pushNotificationContent: pushNotificationContent,
+      topic: topic,
+    };
+    this.webSocketAdaptor.send(JSON.stringify(jsCmd));
+  }
+
+  /**
+   * The following messages are forwarded to MediaManager. They are also kept here because of backward compatibility.
+   * You can find the details about them in media_manager.js
+   * @param {string} streamId
+   * @returns
+   */
+  turnOffLocalCamera(streamId) {
+    return this.mediaManager.turnOffLocalCamera(streamId);
+  }
+  /**
+   *
+   * @param {string} streamId
+   * @returns
+   */
   turnOnLocalCamera(streamId) {
     return this.mediaManager.turnOnLocalCamera(streamId);
   }
@@ -2047,7 +2332,11 @@ export class WebRTCAdaptor {
   unmuteLocalMic() {
     this.mediaManager.unmuteLocalMic();
   }
-
+  /**
+   *
+   * @param {string} streamId
+   * @returns
+   */
   switchDesktopCapture(streamId) {
     return this.mediaManager.switchDesktopCapture(streamId);
   }
@@ -2058,8 +2347,12 @@ export class WebRTCAdaptor {
    * @param {string} deviceId
    * @returns {Promise}
    */
-  switchVideoCameraCapture(streamId, deviceId) {
-    return this.mediaManager.switchVideoCameraCapture(streamId, deviceId);
+  switchVideoCameraCapture(streamId, deviceId, onEndedCallback) {
+    return this.mediaManager.switchVideoCameraCapture(
+      streamId,
+      deviceId,
+      onEndedCallback
+    );
   }
 
   /**
@@ -2080,63 +2373,111 @@ export class WebRTCAdaptor {
   }
 
   /**
+   * Update audio track of the stream. Updates the audio track on the fly as well. It just replaces the audio track with the first one in the stream
+   * @param {*} stream
+   * @param {*} streamId
+   * @param {*} onEndedCallback
+   * @returns
+   */
+  updateAudioTrack(stream, streamId, onEndedCallback) {
+    return this.mediaManager.updateAudioTrack(
+      stream,
+      streamId,
+      onEndedCallback
+    );
+  }
+
+  /**
    * Called by User
    * to switch between front and back camera on mobile devices
    *
-   * @param {*} streamId Id of the stream to be changed.
-   * @param {*} facingMode it can be ""user" or "environment"
+   * @param {string} streamId Id of the stream to be changed.
+   * @param {string} facingMode it can be ""user" or "environment"
    *
    * This method is used to switch front and back camera.
    */
   switchVideoCameraFacingMode(streamId, facingMode) {
     return this.mediaManager.switchVideoCameraFacingMode(streamId, facingMode);
   }
-
+  /**
+   *
+   * @param {string} streamId
+   * @returns
+   */
   switchDesktopCaptureWithCamera(streamId) {
     return this.mediaManager.switchDesktopCaptureWithCamera(streamId);
   }
-
+  /**
+   *
+   * @param {string} streamId
+   * @param {string} deviceId
+   * @returns
+   */
   switchAudioInputSource(streamId, deviceId) {
     return this.mediaManager.switchAudioInputSource(streamId, deviceId);
   }
-
+  /**
+   *
+   * @param {number} volumeLevel
+   */
   setVolumeLevel(volumeLevel) {
     this.mediaManager.setVolumeLevel(volumeLevel);
   }
-
+  /**
+   *
+   * Using sound meter in order to get audio level may cause audio distortion in Windows browsers
+   * @param {Function} levelCallback
+   * @param {number} period
+   * @returns
+   */
   enableAudioLevelForLocalStream(levelCallback, period) {
-    return this.mediaManager.enableAudioLevelForLocalStream(
-      levelCallback,
-      period
-    );
+    return this.mediaManager.enableAudioLevelForLocalStream(levelCallback);
   }
 
   disableAudioLevelForLocalStream() {
     this.mediaManager.disableAudioLevelForLocalStream();
   }
-
+  /**
+   *
+   * @param {object} constraints
+   * @returns
+   */
   applyConstraints(constraints) {
     return this.mediaManager.applyConstraints(constraints);
   }
 
+  /**
+   *
+   * @param {number} bandwidth
+   * @param {string} streamId
+   */
   changeBandwidth(bandwidth, streamId) {
     this.mediaManager.changeBandwidth(bandwidth, streamId);
   }
 
   enableAudioLevelWhenMuted() {
-    this.mediaManager.enableAudioLevelWhenMuted();
+    return this.mediaManager.enableAudioLevelWhenMuted();
   }
 
   disableAudioLevelWhenMuted() {
     this.mediaManager.disableAudioLevelWhenMuted();
   }
-
+  /**
+   *
+   * @param {string} streamId
+   * @returns
+   */
   getVideoSender(streamId) {
     return this.mediaManager.getVideoSender(streamId);
   }
-
-  openStream(mediaConstraints) {
-    return this.mediaManager.openStream(mediaConstraints);
+  /**
+   *
+   * @param {MediaStreamConstraints} mediaConstraints : media constraints to be used for opening the stream
+   * @param {string} streamId : id of the stream to replace tracks with
+   * @returns
+   */
+  openStream(mediaConstraints, streamId) {
+    return this.mediaManager.openStream(mediaConstraints, streamId);
   }
 
   closeStream() {

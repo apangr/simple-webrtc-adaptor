@@ -3,7 +3,14 @@ import "./external/loglevel.min.js";
 const logger = window.log;
 
 export class WebSocketAdaptor {
+  /**
+   *
+   * @param {object} initialValues
+   */
   constructor(initialValues) {
+    /**
+     * @type {boolean}
+     */
     this.debug = false;
     for (var key in initialValues) {
       if (initialValues.hasOwnProperty(key)) {
@@ -13,7 +20,11 @@ export class WebSocketAdaptor {
 
     this.initWebSocketConnection();
   }
-
+  /**
+   * Initializes the WebSocket connection.
+   * @param {Function} callbackConnected - Optional callback function to be called when the connection is established.
+   * @returns {void}
+   */
   initWebSocketConnection(callbackConnected) {
     this.connecting = true;
     this.connected = false;
@@ -156,7 +167,11 @@ export class WebSocketAdaptor {
   close() {
     this.wsConn.close();
   }
-
+  /**
+   *
+   * @param {*} text
+   * @returns
+   */
   send(text) {
     if (this.connecting == false && this.connected == false) {
       //try to reconnect
