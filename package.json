@@ -1,6 +1,6 @@
 {
   "name": "simple-webrtc-adaptor",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "WebSocket interface in publishing and playing WebRTC streams using Javascript.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
