@@ -1,1 +1,1 @@
-export { WebRTCAdaptor } from "./src/webrtc_adaptor";
+export { WebRTCAdaptor } from "./dist/webrtc_adaptor";

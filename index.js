@@ -1,1 +1,3 @@
-export { WebRTCAdaptor } from "./src/webrtc_adaptor";
+"use strict";
+
+module.exports = require("./dist");
