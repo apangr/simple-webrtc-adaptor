@@ -1,1 +1,1 @@
-declare module "simple-webrtc-adaptor";
+export default WebRTCAdaptor;
